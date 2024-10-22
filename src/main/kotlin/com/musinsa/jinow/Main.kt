@@ -33,24 +33,56 @@ fun main(args: Array<String>) {
 
         val publicId = upload["public_id"].toString()
         val format = upload["format"].toString()
-        val transformMap = mapOf(
-            "crop" to "fill",
-            "width" to 500,
-            "height" to 500,
-        )
-        val resourceName = "${publicId + "_" + transformMap.values.joinToString("_")}.$format"
 
-        //transform
-        val transformedImage = transformImage(resourceName = "${publicId}.${upload["format"]}", tranformMap =  transformMap)
+        //val crops = listOf("fill", "fill_pad", "auto")
+        val crops = listOf("fill", "fill_pad", "auto")
+        val gravities = listOf("auto:faces", "auto:object")
+        val ratios = listOf("4:3", "5:6")
 
-        //download image
-        downloadInLocal(
-            imageUrl = transformedImage,
-            localFileName = resourceName
-        )
+        val transformList = crops.flatMap { crop ->
+            gravities.flatMap { gravity ->
+                ratios.map { ratio ->
+                    mapOf(
+                        //"width" to 650,
+                        //"height" to 366,
+                        "aspectRatio" to ratio,
+                        "gravity" to gravity,
+                        "crop" to crop,
+                        "background" to if (crop.contains("pad")) "auto" else null
+                    )
+                }
+            }
+        }
+
+
+        transformList.forEach { transformMap ->
+            val resourceName = "${
+                publicId + "_" + transformMap.filterNot { it.key == "background" }.values
+                    .joinToString("_")
+            }.$format"
+
+            try {
+                //transform
+                val transformedImage = transformImage(
+                    resourceName = "${publicId}.${upload["format"]}",
+                    tranformMap = transformMap
+                )
+
+                //download image
+                downloadInLocal(
+                    imageUrl = transformedImage,
+                    localFileName = resourceName
+                )
+            } catch (e: Exception) {
+                e.printStackTrace()
+                println("Failed to transform the image.")
+            }
+        }
+
 
         //destroy
         removeCloudinaryImage(publicId)
+
     }
 }
 
@@ -74,19 +106,22 @@ private fun uploadToCloudinary(
 
 private fun transformImage(
     resourceName: String,
-    tranformMap: Map<String, Any>,
-    gravity: String = "auto"
-): String =
-    cloudinary.url()
+    tranformMap: Map<String, Any?>,
+): String {
+
+    return cloudinary.url()
         .transformation(
             Transformation<Transformation<*>>()
                 .crop(tranformMap["crop"] as String)
-                .width(tranformMap["width"] as Int)
-                .height(tranformMap["height"] as Int)
-                .gravity(gravity)
+                .width(tranformMap["width"] as Int?)
+                .height(tranformMap["height"] as Int?)
+                .gravity(tranformMap["gravity"] as String?)
+                .background(tranformMap["background"] as String?)
+                .aspectRatio(tranformMap["aspectRatio"] as String?)
         ).generate(resourceName).also {
             println("Transformed image URL: $it")
         }
+}
 
 // Function to download an image from a URL and save it to a file
 private fun downloadInLocal(imageUrl: String, localFileName: String) {
