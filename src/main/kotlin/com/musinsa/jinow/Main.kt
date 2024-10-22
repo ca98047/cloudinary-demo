@@ -22,16 +22,32 @@ fun main(args: Array<String>) {
 
     args.forEach { creativeImage ->
 
+        //원본 다운로드
+        downloadInLocal(
+            imageUrl = creativeImage,
+            localFileName = creativeImage.substringAfterLast("/")
+        )
+
+        //upload
         val upload = uploadToCloudinary(creativeImage)
 
         val publicId = upload["public_id"].toString()
-        val resourceName = "${publicId}.${upload["format"]}"
+        val format = upload["format"].toString()
+        val transformMap = mapOf(
+            "crop" to "fill",
+            "width" to 500,
+            "height" to 500,
+        )
+        val resourceName = "${publicId + "_" + transformMap.values.joinToString("_")}.$format"
 
         //transform
-        val transformedImage = transformImage(resourceName)
+        val transformedImage = transformImage(resourceName = "${publicId}.${upload["format"]}", tranformMap =  transformMap)
 
         //download image
-        downloadInLocal(transformedImage, resourceName)
+        downloadInLocal(
+            imageUrl = transformedImage,
+            localFileName = resourceName
+        )
 
         //destroy
         removeCloudinaryImage(publicId)
@@ -58,17 +74,15 @@ private fun uploadToCloudinary(
 
 private fun transformImage(
     resourceName: String,
-    crop: String = "fill",
-    width: Int = 500,
-    height: Int = 500,
+    tranformMap: Map<String, Any>,
     gravity: String = "auto"
 ): String =
     cloudinary.url()
         .transformation(
             Transformation<Transformation<*>>()
-                .crop(crop)
-                .width(width)
-                .height(height)
+                .crop(tranformMap["crop"] as String)
+                .width(tranformMap["width"] as Int)
+                .height(tranformMap["height"] as Int)
                 .gravity(gravity)
         ).generate(resourceName).also {
             println("Transformed image URL: $it")
