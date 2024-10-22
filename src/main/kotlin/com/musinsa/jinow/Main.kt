@@ -14,23 +14,28 @@ import java.net.URL
 val dotenv: Dotenv = Dotenv.load()
 val cloudinary = Cloudinary(dotenv["CLOUDINARY_URL"])
 
-fun main() {
-    val creativeImage =
-        "https://image.musinsa.com/images/plan_w_mobile_img/2024100412325900000010137.jpg"
+fun main(args: Array<String>) {
+    if (args.isEmpty()) {
+        println("Please provide at least one image URL.")
+        return
+    }
 
-    val upload = uploadToCloudinary(creativeImage)
+    args.forEach { creativeImage ->
 
-    val publicId = upload["public_id"].toString()
-    val resourceName = "${publicId}.${upload["format"]}"
+        val upload = uploadToCloudinary(creativeImage)
 
-    //transform
-    val transformedImage = transformImage(resourceName)
+        val publicId = upload["public_id"].toString()
+        val resourceName = "${publicId}.${upload["format"]}"
 
-    //download image
-    downloadInLocal(transformedImage, resourceName)
+        //transform
+        val transformedImage = transformImage(resourceName)
 
-    //destroy
-    removeCloudinaryImage(publicId)
+        //download image
+        downloadInLocal(transformedImage, resourceName)
+
+        //destroy
+        removeCloudinaryImage(publicId)
+    }
 }
 
 private fun uploadToCloudinary(
